@@ -465,10 +465,21 @@ class OWELETTRA2(OWWidget):
             id_naming = "<None>"
 
         else:
-            id = self.data_dict["id_name"][self.elettra_id_index-1]
-            elettra_beamline = self.data_dict["beamline_name"][self.elettra_id_index-1]
-            position = self.data_dict["position"][self.elettra_id_index-1]
-            id_naming = self.data_dict["naming"][self.elettra_id_index-1]
+            try:
+                id = self.data_dict["id_name"][self.elettra_id_index-1]
+                elettra_beamline = self.data_dict["beamline_name"][self.elettra_id_index-1]
+                position = self.data_dict["position"][self.elettra_id_index-1]
+                id_naming = self.data_dict["naming"][self.elettra_id_index-1]
+            except Exception as e:
+                # If settings loading fails, reinitialize to defaults
+                #self._handle_settings_load_failure(e)
+                print("Error getting ID information from data dictionary:", e)
+                print("Setting all ID information to <None>")
+                id = "<None>"
+                elettra_beamline = "<None>"
+                position = "<None>"
+                id_naming = "<None>"
+                QMessageBox.critical(self, "Error", str(e)+"Sorry, something went wrong while setting ID information. All ID Elettra2.0 widget info has been set to <None>", QMessageBox.Ok)
 
         info_parameters = {
             "electron_energy_in_GeV":self.electron_energy_in_GeV,
