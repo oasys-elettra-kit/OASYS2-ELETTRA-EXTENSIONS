@@ -54,7 +54,7 @@ import sys
 from setuptools import find_packages, setup
 
 NAME = 'OASYS2-ELETTRA-EXTENSIONS'
-VERSION = '0.0.5'
+VERSION = '0.0.6'
 ISRELEASED = False
 
 DESCRIPTION = 'oasys2-elettra-extensions'
@@ -88,9 +88,9 @@ SETUP_REQUIRES = (
 
 INSTALL_REQUIRES = (
                     'oasys2>=0.0.19',
-                    'pandas',
+                    'pandas',                    
+                    'shadow4>=0.1.80',
                     #to check if are needed                    
-                    # 'shadow4>=0.1.70',
                     # 'xoppylib>=1.0.46',
                     )
 
@@ -111,7 +111,7 @@ ENTRY_POINTS = {
                        ),
     'oasys2.widgets' : (
                         # widgets temporarily disabled to avoid conflicts
-                        # but the skeleton is ready, just remove comment when needed
+                        # skeleton is ready, just remove comment when needed
                         #"ELETTRA Oasys   = orangecontrib.elettra.oasys.widgets.extension", 
                         "ELETTRA Syned   = orangecontrib.elettra.syned.widgets.extension",
                         #"ELETTRA XOPPY   = orangecontrib.elettra.xoppy.widgets.extension",

@@ -43,25 +43,22 @@ class OWVASGM(OWWidget):
     g_density = Setting(600e3)  # 600 lines/mm converted to lines/m
     radius = Setting(20.0)
 
-
-    grating_diffraction_order = Setting(-1)
-
-    
+    grating_diffraction_order = Setting(-1)    
 
     units_in_use = Setting(0)
     photon_wavelength = Setting(25.0)
     photon_energy = Setting(500.0)
-    #initial_guess_alpha_deg = Setting(57.0)
-    #initial_guess_beta_deg = Setting(-57.0)
+
+    angles_to_guess = Setting(0)
+    estimated_included_angle = Setting(100.0) #deg
+    initial_guess_alpha_deg = Setting(57.0)
+    initial_guess_beta_deg = Setting(-57.0)
 
     #image_path = os.path.join(resources.package_dirname("orangecontrib.shadow4.widgets.gui"), "misc", "vls_pgm_layout.png")
-    #usage_path = os.path.join(resources.package_dirname("orangecontrib.elettra.shadow4.widgets.extension"), "icons", "vasgm_usage.png")
+    #usage_path = os.path.join(resources.package_dirname("orangecontrib.elettra.shadow4.widgets.extension"), "images", "vasgm_usage.png")
     
-
     calc_alpha = Setting(0.0) #deg
-    calc_beta = Setting(0.0) #deg
-
-    estimated_included_angle = Setting(100.0) #deg
+    calc_beta = Setting(0.0) #deg    
 
     plane_mirror_angle = Setting(0.0) #deg
     calc_included_angle = Setting(0.0) #deg
@@ -126,27 +123,34 @@ class OWVASGM(OWWidget):
 
         gui.separator(box)
 
-        box_2 = oasysgui.widgetBox(tab_step_1, "SGM Parameters", orientation="vertical")
-        
+        box_2 = oasysgui.widgetBox(tab_step_1, "SGM Parameters", orientation="vertical")        
 
         gui.comboBox(box_2, self, "units_in_use", label="Units in use", labelWidth=260,
                      items=["eV", "Angstroms"],
-                     callback=self.set_UnitsInUse, sendSelectedValue=False, orientation="horizontal")
-        
+                     callback=self.set_UnitsInUse, sendSelectedValue=False, orientation="horizontal")        
 
         self.autosetting_box_units_1 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
-
         oasysgui.lineEdit(self.autosetting_box_units_1, self, "photon_energy", "Photon energy [eV]", labelWidth=260, valueType=float, orientation="horizontal")
 
         self.autosetting_box_units_2 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
-
         oasysgui.lineEdit(self.autosetting_box_units_2, self, "photon_wavelength", "Wavelength [Å]", labelWidth=260, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(box_2, self, "grating_diffraction_order", "Grating Diffraction Order", labelWidth=260, valueType=int, orientation="horizontal")
-        oasysgui.lineEdit(box_2, self, "estimated_included_angle", "Estimated Included Angle [deg]", labelWidth=260, valueType=float, orientation="horizontal")
-        #oasysgui.lineEdit(box_2, self, "initial_guess_alpha_deg", "Initial Guess Alpha [deg]", labelWidth=260, valueType=float, orientation="horizontal")
-        #oasysgui.lineEdit(box_2, self, "initial_guess_beta_deg", "Initial Guess Beta [deg]", labelWidth=260, valueType=float, orientation="horizontal")
 
         self.set_UnitsInUse()
+
+        oasysgui.lineEdit(box_2, self, "grating_diffraction_order", "Grating Diffraction Order", labelWidth=260, valueType=int, orientation="horizontal")
+
+        gui.comboBox(box_2, self, "angles_to_guess", label="Angles to use for guessing", labelWidth=260,
+                     items=["Included angle", "α and β angles"],
+                     callback=self.set_guess_angles, sendSelectedValue=False, orientation="horizontal")   
+        
+        self.autosetting_box_guess_1 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
+        oasysgui.lineEdit(self.autosetting_box_guess_1, self, "estimated_included_angle", "Estimated Included Angle [deg]", labelWidth=260, valueType=float, orientation="horizontal")
+        
+        self.autosetting_box_guess_2 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
+        oasysgui.lineEdit(self.autosetting_box_guess_2, self, "initial_guess_alpha_deg", "Initial Guess Alpha [deg]", labelWidth=260, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(self.autosetting_box_guess_2, self, "initial_guess_beta_deg", "Initial Guess Beta [deg]", labelWidth=260, valueType=float, orientation="horizontal")
+        
+        self.set_guess_angles()
 
         #### results tab #####
         tabs_out = oasysgui.tabWidget(self.mainArea)
@@ -181,6 +185,10 @@ class OWVASGM(OWWidget):
     def set_UnitsInUse(self):
         self.autosetting_box_units_1.setVisible(self.units_in_use == 0)
         self.autosetting_box_units_2.setVisible(self.units_in_use == 1)
+
+    def set_guess_angles(self):
+        self.autosetting_box_guess_1.setVisible(self.angles_to_guess == 0)
+        self.autosetting_box_guess_2.setVisible(self.angles_to_guess == 1)
 
     def solve_sgm_angles(cls,
                          r=0.0,
@@ -273,6 +281,11 @@ class OWVASGM(OWWidget):
                 photon_energy = self.photon_energy
             elif self.units_in_use == 1:
                 photon_energy = ShadowPhysics.getEnergyFromWavelength(self.photon_wavelength * 1e-10)  # Convert Å to m
+
+            if self.angles_to_guess == 0:
+                initial_guess = [numpy.radians(self.estimated_included_angle/2), numpy.radians(-self.estimated_included_angle/2)]
+            elif self.angles_to_guess == 1:
+                initial_guess = [numpy.radians(self.initial_guess_alpha_deg), numpy.radians(self.initial_guess_beta_deg)]
             
             calc_alpha, calc_beta, plane_mirror_angle, calc_included_angle = \
                 self.solve_sgm_angles(
@@ -282,7 +295,7 @@ class OWVASGM(OWWidget):
                     grating_diffraction_order=self.grating_diffraction_order,
                     g_density=self.g_density,
                     photon_energy=photon_energy,                         
-                    initial_guess=[numpy.radians(self.estimated_included_angle/2), numpy.radians(-self.estimated_included_angle/2)],
+                    initial_guess=initial_guess,
                     verbose=1)
             
             self.calc_alpha          = numpy.round(calc_alpha, 3)
@@ -299,13 +312,20 @@ class OWVASGM(OWWidget):
         self.r = congruence.checkStrictlyPositiveNumber(self.r, "Distance Source-Grating")
         self.rp = congruence.checkStrictlyPositiveNumber(self.rp, "Distance Grating-Exit Slits")        
         self.g_density = congruence.checkStrictlyPositiveNumber(self.g_density, "Grating Line Density [lines/m]")
-        self.radius = congruence.checkStrictlyPositiveNumber(self.radius, "Grating Radius [m]")
-        self.estimated_included_angle = congruence.checkStrictlyPositiveNumber(self.estimated_included_angle, "Estimated Included Angle [deg]")
-
+        self.radius = congruence.checkStrictlyPositiveNumber(self.radius, "Grating Radius [m]")        
+        self.g_density = congruence.checkStrictlyPositiveNumber(self.g_density, "Grating Line Density [lines/m]")
+        self.grating_diffraction_order = congruence.checkNumber(self.grating_diffraction_order, "Grating Diffraction Order")
+        
         if self.units_in_use == 0:
             self.photon_energy = congruence.checkPositiveNumber(self.photon_energy, "Photon Energy")
         elif self.units_in_use == 1:
             self.photon_wavelength = congruence.checkPositiveNumber(self.photon_wavelength, "Photon Wavelength")
+
+        if self.angles_to_guess == 0:
+            self.estimated_included_angle = congruence.checkPositiveNumber(self.estimated_included_angle, "Estimated Included Angle [deg]")
+        elif self.angles_to_guess == 1:
+            self.initial_guess_alpha_deg = congruence.checkAngle(self.initial_guess_alpha_deg, "Initial Guess Alpha [deg]")
+            self.initial_guess_beta_deg = congruence.checkAngle(self.initial_guess_beta_deg, "Initial Guess Beta [deg]")
     
     def get_about_path(self):
         # Get the directory of the current file
@@ -323,6 +343,11 @@ class OWVASGM(OWWidget):
         self.shadow_output.ensureCursorVisible()
 
 add_widget_parameters_to_module(__name__)
+
+"""This part of the code is for testing the widget independently.
+    It creates a QApplication, initializes the OWVASGM widget,
+    sets some default parameters, and displays the widget.
+    After the application event loop ends, it saves the widget settings."""
 
 if __name__ == "__main__":
     
