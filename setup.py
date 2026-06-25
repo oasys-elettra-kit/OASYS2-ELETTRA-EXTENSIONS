@@ -54,7 +54,7 @@ import sys
 from setuptools import find_packages, setup
 
 NAME = 'OASYS2-ELETTRA-EXTENSIONS'
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 ISRELEASED = False
 
 DESCRIPTION = 'oasys2-elettra-extensions'
@@ -115,7 +115,7 @@ ENTRY_POINTS = {
                         #"ELETTRA Oasys   = orangecontrib.elettra.oasys.widgets.extension", 
                         "ELETTRA Syned   = orangecontrib.elettra.syned.widgets.extension",
                         #"ELETTRA XOPPY   = orangecontrib.elettra.xoppy.widgets.extension",
-                        #"ELETTRA Shadow4 = orangecontrib.elettra.shadow4.widgets.extension",
+                        "ELETTRA Shadow4 = orangecontrib.elettra.shadow4.widgets.extension",
                         #"ELETTRA Wofry   = orangecontrib.elettra.wofry.widgets.extension",
                         #"ELETTRA SRW     = orangecontrib.elettra.srw.widgets.extension",
                         ),
