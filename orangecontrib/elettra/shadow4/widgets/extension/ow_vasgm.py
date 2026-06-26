@@ -189,6 +189,8 @@ class OWVASGM(OWWidget):
     def set_guess_angles(self):
         self.autosetting_box_guess_1.setVisible(self.angles_to_guess == 0)
         self.autosetting_box_guess_2.setVisible(self.angles_to_guess == 1)
+    
+    @classmethod
 
     def solve_sgm_angles(cls,
                          r=0.0,
