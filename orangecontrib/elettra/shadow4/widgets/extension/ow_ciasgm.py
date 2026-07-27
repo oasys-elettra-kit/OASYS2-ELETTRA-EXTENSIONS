@@ -1,10 +1,6 @@
-import os, sys, numpy
-
 from AnyQt.QtCore import Qt
 from AnyQt.QtWidgets import QLabel, QApplication, QMessageBox, QSizePolicy
 from AnyQt.QtGui import QTextCursor, QPixmap
-
-import orangecanvas.resources as resources
 
 from orangewidget import gui
 from orangewidget.settings import Setting
@@ -18,52 +14,41 @@ from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget.util.widget_util import EmittingStream
 from orangecontrib.shadow4.util.shadow4_util import ShadowPhysics
 
-from scipy.optimize import fsolve
+import numpy as np
+import os, sys
 
-#TODO: add output to connect directly to Shadow4 widgets, to use values on spherical grating and plane mirror
-
-
-class OWVASGM(OWWidget):
-    name = "VA-SGM Angles Calculator"
-    id = "VASGMAnglesCalculator"
-    description = "Calculation of angles for Variable-Angle SGM"
-    icon = "icons/vasgm.png"
-    author = "Juan Reyes Herrera"
-    maintainer_email = "juan.reyesherrera@elettra.eu"
-    priority = 100
+class OWCIASGM(OWWidget):
+    name = "CIA-SGM Calculator"
+    id = "Calculator"
+    description = "Calculation of angles for a spherical grating monochromator with constant included angle"
+    icon = "icons/ciasgm.png"
+    author = "Roberta Totani"
+    maintainer_email = "roberta.totani@elettra.eu"
+    priority = 101 
     category = ""
-    keywords = ["oasys", "vasgm", "angles", "calculator"]
-    
+    keywords = ["oasys", "ciasgm", "angles", "calculator"]
 
     want_main_area = True
-    
+   
+    g_density = Setting(1500e3)  # 1500 lines/mm converted to lines/m
+    radius = Setting(5.0)
 
-    r = Setting(10.0)
-    rp = Setting(10.0)
-    g_density = Setting(600e3)  # 600 lines/mm converted to lines/m
-    radius = Setting(20.0)
-
-    grating_diffraction_order = Setting(-1)    
+    grating_diffraction_order = Setting(1)    
 
     units_in_use = Setting(0)
-    photon_wavelength = Setting(25.0)
-    photon_energy = Setting(500.0)
+    photon_wavelength = Setting(2.0)
+    photon_energy = Setting(10.0)
+    pH = Setting(0.0) #meters
+    pV = Setting(0.0) #meters
+    included_angle = Setting(5.0) #deg
 
-    angles_to_guess = Setting(0)
-    estimated_included_angle = Setting(100.0) #deg
-    initial_guess_alpha_deg = Setting(57.0)
-    initial_guess_beta_deg = Setting(-57.0)
+    alpha_deg = Setting(0.0) #deg
+    beta_deg = Setting(0.0) #deg    
+    qH = Setting(0.0) #meters
+    qV = Setting(0.0) #meters
+ 
+    shadow_g_diffraction_order = Setting(0)
 
-    #image_path = os.path.join(resources.package_dirname("orangecontrib.shadow4.widgets.gui"), "misc", "vls_pgm_layout.png")
-    #usage_path = os.path.join(resources.package_dirname("orangecontrib.elettra.shadow4.widgets.extension"), "images", "vasgm_usage.png")
-    
-    calc_alpha = Setting(0.0) #deg
-    calc_beta = Setting(0.0) #deg    
-
-    plane_mirror_angle = Setting(0.0) #deg
-    calc_included_angle = Setting(0.0) #deg
-
-    shadow_g_diffraction_order = Setting(0) #deg
 
     def __init__(self):
 
@@ -79,6 +64,7 @@ class OWVASGM(OWWidget):
         gui.separator(self.controlArea)
 
         box0 = oasysgui.widgetBox(self.controlArea, "", orientation="horizontal")
+
         #widget buttons: compute, set defaults, help
         button = gui.button(box0, self, "Compute", callback=self.compute)
         button.setFixedHeight(45)
@@ -88,7 +74,7 @@ class OWVASGM(OWWidget):
         tabs_setting = oasysgui.tabWidget(self.controlArea)
         tabs_setting.setFixedHeight(425)
 
-        tab_step_1 = oasysgui.createTabPage(tabs_setting, "VASGM Parameters")
+        tab_step_1 = oasysgui.createTabPage(tabs_setting, "Spherical Grating Parameters")
 
         tab_about = oasysgui.createTabPage(tabs_setting, "About this Widget")
         tab_about.setStyleSheet("background-color: white;")
@@ -103,7 +89,7 @@ class OWVASGM(OWWidget):
         if not pixmap.isNull():
             # Scale to fit the label while maintaining aspect ratio
             scaled_pixmap = pixmap.scaled(
-                label.size()*.7, 
+                label.size()*.8, 
                 Qt.KeepAspectRatio, 
                 Qt.SmoothTransformation
             )
@@ -116,10 +102,11 @@ class OWVASGM(OWWidget):
 
         box = oasysgui.widgetBox(tab_step_1, "Spherical Grating Parameters", orientation="vertical")
 
-        oasysgui.lineEdit(box, self, "r", "Distance Source-Grating [m]", labelWidth=260, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(box, self, "rp", "Distance Grating-Image [m]", labelWidth=260, valueType=float, orientation="horizontal")
         oasysgui.lineEdit(box, self, "g_density", "Grating Line Density [lines/m]", labelWidth=260, valueType=float, orientation="horizontal")
         oasysgui.lineEdit(box, self, "radius", "Grating Radius [m]", labelWidth=260, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(box, self, "pH", "HOR Distance Source - Grating [m]", labelWidth=260, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(box, self, "pV", "VER Distance Source - Grating [m]", labelWidth=260, valueType=float, orientation="horizontal")
+        
 
         gui.separator(box)
 
@@ -138,19 +125,8 @@ class OWVASGM(OWWidget):
         self.set_UnitsInUse()
 
         oasysgui.lineEdit(box_2, self, "grating_diffraction_order", "Grating Diffraction Order", labelWidth=260, valueType=int, orientation="horizontal")
+        oasysgui.lineEdit(box_2, self, "included_angle", "Grating Included Angle [deg]", labelWidth=260, valueType=int, orientation="horizontal")
 
-        gui.comboBox(box_2, self, "angles_to_guess", label="Angles to use for guessing", labelWidth=260,
-                     items=["Included angle", "α and β angles"],
-                     callback=self.set_guess_angles, sendSelectedValue=False, orientation="horizontal")   
-        
-        self.autosetting_box_guess_1 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
-        oasysgui.lineEdit(self.autosetting_box_guess_1, self, "estimated_included_angle", "Estimated Included Angle [deg]", labelWidth=260, valueType=float, orientation="horizontal")
-        
-        self.autosetting_box_guess_2 = oasysgui.widgetBox(box_2, "", addSpace=False, orientation="vertical")
-        oasysgui.lineEdit(self.autosetting_box_guess_2, self, "initial_guess_alpha_deg", "Initial Guess Alpha [deg]", labelWidth=260, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(self.autosetting_box_guess_2, self, "initial_guess_beta_deg", "Initial Guess Beta [deg]", labelWidth=260, valueType=float, orientation="horizontal")
-        
-        self.set_guess_angles()
 
         #### results tab #####
         tabs_out = oasysgui.tabWidget(self.mainArea)
@@ -168,10 +144,11 @@ class OWVASGM(OWWidget):
         output_box = oasysgui.widgetBox(tab_out_1, "", addSpace=True, orientation="horizontal")
         output_box_1 = oasysgui.widgetBox(output_box, "Calculations Output", addSpace=True, orientation="vertical")
 
-        oasysgui.lineEdit(output_box_1, self, "calc_alpha", "Alpha [deg]", labelWidth=220, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(output_box_1, self, "calc_beta", "Beta [deg] (use positive for shadow)", labelWidth=220, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(output_box_1, self, "plane_mirror_angle", "Plane Mirror Angle [deg]", labelWidth=220, valueType=float, orientation="horizontal")
-        oasysgui.lineEdit(output_box_1, self, "calc_included_angle", "Calculated Included Angle [deg]", labelWidth=220, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(output_box_1, self, "alpha_deg", "Alpha [deg]", labelWidth=220, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(output_box_1, self, "beta_deg", "Beta [deg] (use positive for shadow)", labelWidth=220, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(output_box_1, self, "qH", "HOR Distance Grating - Image [m]", labelWidth=220, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(output_box_1, self, "qV", "VER Distance Grating - Image [m]", labelWidth=220, valueType=float, orientation="horizontal")
+        oasysgui.lineEdit(output_box_1, self, "included_angle", "Grating Included Angle [deg]", labelWidth=220, valueType=float, orientation="horizontal")
         oasysgui.lineEdit(output_box_1, self, "shadow_g_diffraction_order", "👁️ Shadow Grating Diffraction Order (- for inside orders)", labelWidth=320, valueType=int, orientation="horizontal")
         
         ## output tab ###
@@ -183,48 +160,41 @@ class OWVASGM(OWWidget):
         gui.rubber(self.controlArea)
 
     def set_UnitsInUse(self):
+
         self.autosetting_box_units_1.setVisible(self.units_in_use == 0)
         self.autosetting_box_units_2.setVisible(self.units_in_use == 1)
 
-    def set_guess_angles(self):
-        self.autosetting_box_guess_1.setVisible(self.angles_to_guess == 0)
-        self.autosetting_box_guess_2.setVisible(self.angles_to_guess == 1)
-    
     @classmethod
 
-    def solve_sgm_angles(cls,
-                         r=0.0,
-                         rp=0.0,
-                         radius=0.0,
+    def solve_ciasgm(cls,
+                         included_angle=0.0,
                          grating_diffraction_order=-1,
                          g_density=0.0,
-                         photon_energy=0.0,                         
-                         initial_guess=[0.0, 0.0],
+                         radius = 0.0,
+                         photon_energy=0.0,
+                         pH=0.0,
+                         pV=0.0,
                          verbose=0):
-        """
+        """ 
         Solve for alpha and beta (incidence and diffraction angles) for a
-        spherical grating monochromator.
+        spherical grating monochromator with constant included angle (Rowland circle conditions).
     
         Parameters:
         -----------
-        r : float
-            Source-to-grating distance (in m)
-        rp : float
-            Grating-to-image (exit slit) distance (in m)
-        radius : float
-            Radius of curvature of the spherical grating (in m)
         g_density : float
             Groove density (lines per m)  (e.g., 600 lines/m)
+        radius = grating radius of curvature (m)
         grating_diffraction_order : int
             Diffraction order (usually +1 or -1)
             notice that negative order are called outside orders,
              and positive orders are called inside orders.
+        included angle (with respect to the grating normal)
         photon_energy : float
             Photon energy (in eV)
+        pH : distance Source - Grating in the horizontal direction (m)
+        pV : distance Source - Grating in the vertical direction (m)
         angle_units : str
             'rad' for output in radians, 'deg' for output in degrees
-        initial_guess : list
-            Initial guess for [alpha, beta] in radians for the fsolve function
         verbose : bool
             If True, prints additional information during the solving process.
     
@@ -234,44 +204,54 @@ class OWVASGM(OWWidget):
             Incidence angle (degrees)
         beta : float
             Diffraction angle (degrees)
+        N.B. alpha and beta are defined with respect to the grating surface normal
+        qH : distance grating - Image, in the horizontal direction
+        qV : distance grating - Image, in the vertical direction
         """
+
+
         # Step 1: Groove spacing (m)
-        d_m = 1.0 / g_density         
+        #d_m = 1.0 / g_density         
         wavelength = ShadowPhysics.getWavelengthFromEnergy(photon_energy) * 1e-10  # wavelength in meters
 
+        #Step 2: Included angle (rad)
+        theta = np.deg2rad(included_angle)
+
         if verbose:
-            print("--- Solving for SGM Angles ---")
+            print("--- Solving for Constant Included Angle SGM ---")
             print("Reference X-Ray Data Booklet, Malcolm R. Howells")
             print("https://xdb.lbl.gov/Section4/Sec_4-3Extended.pdf")
-    
-        def equations(vars):
-            alpha, beta = vars
-            eq1 = (numpy.cos(alpha)**2 / r - numpy.cos(alpha) / radius) + \
-                  (numpy.cos(beta)**2 / rp - numpy.cos(beta) / radius)
-            eq2 = numpy.sin(alpha) + numpy.sin(beta) - grating_diffraction_order * wavelength / d_m
-            return [eq1, eq2]        
+
+        # Step 3: evaluating alpha, beta = angles of incidence and diffraction, respectively, with a constant included angle configuration
+        # alpha and beta are considered with respect to the surface normal
+
+        beta_rad = np.asin(wavelength * g_density / (2 * np.cos(0.5 * theta))) - 0.5 * theta
+        beta_deg = np.rad2deg(beta_rad)
+        alpha_rad = theta + beta_rad
+        alpha_deg = np.rad2deg(alpha_rad)
+       
+        #Step 4: evaluating now qH and qV, from the conditions F200 = 0 and F020 = 0
         
-        alpha_rad, beta_rad = fsolve(equations, initial_guess)        
-    
-        calc_alpha = numpy.degrees(alpha_rad)
-        calc_beta = numpy.degrees(beta_rad)
-        plane_mirror_angle = (calc_alpha - calc_beta) / 2.0
-        calc_included_angle = calc_alpha - calc_beta            
-    
+        qH = ((np.cos(alpha_rad) + np.cos(beta_rad)) / radius - 1 / pH) ** (-1)
+        qV = (np.cos(beta_rad)) ** 2 / (
+                (np.cos(alpha_rad) + np.cos(beta_rad)) / radius - (np.cos(alpha_rad)) ** 2 / pV)
+
         if verbose:
             print(f"Photon energy: {photon_energy} eV")
             print(f"Wavelength: {wavelength:.3e} m")
-            print(f"Groove spacing: {d_m:.3e} m")
-            print(f"Alpha (incidence angle): {calc_alpha:.3f}")
-            print(f"Beta (diffraction angle): {calc_beta:.3f}")
-            print(f"Plane mirror angle: {plane_mirror_angle:.3f}°")
-            print(f"Included angle (α - β): {calc_included_angle:.3f}°")
+            print(f"Groove spacing: {g_density} lines/m")
+            print(f"Included angle (α - β): {included_angle:.3f}°")
             print(f"Attention 👁️ Shadow Grating Diffraction Order (- for inside orders): {-1 *grating_diffraction_order}")
-        
-        return calc_alpha, calc_beta, plane_mirror_angle, calc_included_angle 
+            print(f"Alpha (incidence angle): {alpha_deg:.3f}")
+            print(f"Beta (diffraction angle): {beta_deg:.3f}")
+            print(f"Distance Grating - Image HOR, i.e grating HOR focus position: {qH:.3f}")
+            print(f"Distance Grating - Image VER, i.e. grating VER focus position: {qV:.3f}")
+
+        return(alpha_deg, beta_deg, qH, qV)
+
 
     def compute(self):
-
+        #pass
         try:
             self.shadow_output.setText("")
 
@@ -284,58 +264,47 @@ class OWVASGM(OWWidget):
             elif self.units_in_use == 1:
                 photon_energy = ShadowPhysics.getEnergyFromWavelength(self.photon_wavelength)  # Convert Å to m
 
-            if self.angles_to_guess == 0:
-                initial_guess = [numpy.radians(self.estimated_included_angle/2), numpy.radians(-self.estimated_included_angle/2)]
-            elif self.angles_to_guess == 1:
-                initial_guess = [numpy.radians(self.initial_guess_alpha_deg), numpy.radians(self.initial_guess_beta_deg)]
             
-            calc_alpha, calc_beta, plane_mirror_angle, calc_included_angle = \
-                self.solve_sgm_angles(
-                    r=self.r,
-                    rp=self.rp,
-                    radius=self.radius,
-                    grating_diffraction_order=self.grating_diffraction_order,
-                    g_density=self.g_density,
-                    photon_energy=photon_energy,                         
-                    initial_guess=initial_guess,
-                    verbose=1)
+            alpha_deg, beta_deg, qH, qV = \
+                self.solve_ciasgm(
+                included_angle=self.included_angle,
+                         grating_diffraction_order=self.grating_diffraction_order,
+                         g_density=self.g_density,
+                         radius=self.radius,
+                         photon_energy=photon_energy,
+                         pH=self.pH,
+                         pV=self.pV,
+                         verbose=1)
             
-            self.calc_alpha          = numpy.round(calc_alpha, 3)
-            self.calc_beta           = numpy.round(calc_beta, 3)
-            self.plane_mirror_angle  = numpy.round(plane_mirror_angle, 3)
-            self.calc_included_angle = numpy.round(calc_included_angle, 3)
+            self.alpha_deg          = np.round(alpha_deg, 3)
+            self.beta_deg           = np.round(beta_deg, 3)
+            self.qH                 = np.round(qH, 3)
+            self.qV                 = np.round(qV, 3)
             self.shadow_g_diffraction_order = -1 * self.grating_diffraction_order
+
 
         except Exception as exception:
             QMessageBox.critical(self, "Error", str(exception), QMessageBox.Ok)
             if self.IS_DEVELOP: raise exception
 
-    def checkFields(self):
-        self.r = congruence.checkStrictlyPositiveNumber(self.r, "Distance Source-Grating")
-        self.rp = congruence.checkStrictlyPositiveNumber(self.rp, "Distance Grating-Exit Slits")        
-        self.g_density = congruence.checkStrictlyPositiveNumber(self.g_density, "Grating Line Density [lines/m]")
-        self.radius = congruence.checkStrictlyPositiveNumber(self.radius, "Grating Radius [m]")        
-        self.g_density = congruence.checkStrictlyPositiveNumber(self.g_density, "Grating Line Density [lines/m]")
+    def checkFields(self):  
+        self.g_density = congruence.checkStrictlyPositiveNumber(self.g_density, "Grating Line Density [lines/m]")       
         self.grating_diffraction_order = congruence.checkNumber(self.grating_diffraction_order, "Grating Diffraction Order")
-        
+        self.pH = congruence.checkStrictlyPositiveNumber(self.pH, "Distance Source - Grating [m] HOR")
+        self.pV = congruence.checkStrictlyPositiveNumber(self.pV, "Distance Source - Grating VER [m]")
         if self.units_in_use == 0:
             self.photon_energy = congruence.checkPositiveNumber(self.photon_energy, "Photon Energy")
         elif self.units_in_use == 1:
-            self.photon_wavelength = congruence.checkPositiveNumber(self.photon_wavelength, "Photon Wavelength")
+            self.photon_wavelength = congruence.checkPositiveNumber(self.photon_wavelength, "Photon Wavelength") 
 
-        if self.angles_to_guess == 0:
-            self.estimated_included_angle = congruence.checkPositiveNumber(self.estimated_included_angle, "Estimated Included Angle [deg]")
-        elif self.angles_to_guess == 1:
-            self.initial_guess_alpha_deg = congruence.checkAngle(self.initial_guess_alpha_deg, "Initial Guess Alpha [deg]")
-            self.initial_guess_beta_deg = congruence.checkAngle(self.initial_guess_beta_deg, "Initial Guess Beta [deg]")
-    
+
     def get_about_path(self):
         # Get the directory of the current file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(current_dir, "images", "vasgm_about.png")
+        return os.path.join(current_dir, "images", "ciasgm_about.png")
 
     def defaults(self):
-         self._reset_settings()
+        self._reset_settings()
 
     def writeStdOut(self, text):
         cursor = self.shadow_output.textCursor()
@@ -344,10 +313,11 @@ class OWVASGM(OWWidget):
         self.shadow_output.setTextCursor(cursor)
         self.shadow_output.ensureCursorVisible()
 
+
 add_widget_parameters_to_module(__name__)
 
 """This part of the code is for testing the widget independently.
-    It creates a QApplication, initializes the OWVASGM widget,
+    It creates a QApplication, initializes the OWCIASGM widget,
     sets some default parameters, and displays the widget.
     After the application event loop ends, it saves the widget settings."""
 
@@ -356,15 +326,17 @@ if __name__ == "__main__":
     from AnyQt.QtWidgets import QApplication
     import sys
 
+    
     app = QApplication(sys.argv)
-    ow = OWVASGM()
-    ow.r = 2.572
-    ow.rp = 1.05
-    ow.g_density = 1200000
-    ow.radius = 32.49
-    ow.photon_energy = 900.0
-    ow.grating_diffraction_order = -1
-    ow.estimated_included_angle = 174.0
+    ow = OWCIASGM()
+    ow.pH = 3.83
+    ow.pV = 3.834
+    ow.rp = 4.237
+    ow.g_density = 1500000
+    ow.radius = 4.038
+    ow.photon_energy = 6.4
+    ow.grating_diffraction_order = 1
+    ow.included_angle = 5
 
     ow.show()
     app.exec()

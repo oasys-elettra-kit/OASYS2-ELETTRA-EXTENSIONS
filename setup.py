@@ -54,7 +54,7 @@ import sys
 from setuptools import find_packages, setup
 
 NAME = 'OASYS2-ELETTRA-EXTENSIONS'
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 ISRELEASED = False
 
 DESCRIPTION = 'oasys2-elettra-extensions'
