@@ -1,0 +1,27 @@
+{
+    "CLASS_NAME": "LightSource",
+    "name": "B80_MAT_SCI",
+    "electron_beam": {
+        "CLASS_NAME": "ElectronBeam",
+        "energy_in_GeV": 2.4,
+        "energy_spread": 0.000934,
+        "current": 0.4,
+        "number_of_bunches": 400,
+        "moment_xx": 5.303999999999999e-11,
+        "moment_xxp": -7.461999999999998e-11,
+        "moment_xpxp": 1.3794899019607842e-09,
+        "moment_yy": 7.277e-11,
+        "moment_yyp": -4.94e-12,
+        "moment_ypyp": 1.1290861618798956e-12,
+        "dispersion_x": 0.0067,
+        "dispersion_y": 0.0,
+        "dispersionp_x": -0.0084,
+        "dispersionp_y": 0.0
+    },
+    "magnetic_structure": {
+        "CLASS_NAME": "BendingMagnet",
+        "radius": 5.483245400517567,
+        "magnetic_field": 1.46,
+        "length": 0.22
+    }
+}

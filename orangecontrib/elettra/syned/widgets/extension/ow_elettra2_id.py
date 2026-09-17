@@ -47,11 +47,11 @@ BOTH = 3
 
 #TODO: Implement the parametrization of B
 
-class OWELETTRA2(OWWidget):
+class OWELETTRA2ID(OWWidget):
 
-    name = "Elettra 2.0 Sources"
+    name = "Elettra ID Sources"
     description = "Syned: Elettra 2.0 ID Light Source"
-    icon = "icons/source_elettra.png"
+    icon = "icons/id_source_elettra.png"
     priority = 2.0
 
 
@@ -67,7 +67,7 @@ class OWELETTRA2(OWWidget):
 
 
     MAX_WIDTH = 1320
-    MAX_HEIGHT = 750
+    MAX_HEIGHT = 820
 
     IMAGE_WIDTH = 860
     IMAGE_HEIGHT = 645
@@ -141,7 +141,7 @@ class OWELETTRA2(OWWidget):
     # data_url = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'elettra2_sources.csv')
     # data_ls = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'Elettra_Long_Straight.json')
     # data_ss = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'Elettra_Short_Straight.json')
-    data_url = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'elettra2_sources.csv')
+    data_url = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'elettra2_id_sources.csv')
     data_ls = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'Elettra_Long_Straight.json')
     data_ss = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'Elettra_Short_Straight.json')
     data_dict = None
@@ -1007,7 +1007,7 @@ Approximated coherent fraction at 1st harmonic:
         layout = QVBoxLayout(dlg)
 
         # Load image from installed package
-        img_path = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'elettra2_data.png')
+        img_path = os.path.join(resources.package_dirname("orangecontrib.elettra.syned.data"), 'elettra2_id_data.png')
         pixmap = QPixmap(img_path)
 
         if pixmap.isNull():
@@ -1047,7 +1047,7 @@ add_widget_parameters_to_module(__name__)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ow = OWELETTRA2()
+    ow = OWELETTRA2ID()
     ow.show()
     app.exec()
     ow.saveSettings()

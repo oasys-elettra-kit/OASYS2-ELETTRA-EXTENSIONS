@@ -1,0 +1,27 @@
+{
+    "CLASS_NAME": "LightSource",
+    "name": "SBEND_SYRMEP",
+    "electron_beam": {
+        "CLASS_NAME": "ElectronBeam",
+        "energy_in_GeV": 2.4,
+        "energy_spread": 0.000934,
+        "current": 0.4,
+        "number_of_bunches": 400,
+        "moment_xx": 4.966e-11,
+        "moment_xxp": 3.471e-11,
+        "moment_xpxp": 1.3855171989528794e-09,
+        "moment_yy": 7.1212e-11,
+        "moment_yyp": -4.89212e-12,
+        "moment_ypyp": 1.1471779769477056e-12,
+        "dispersion_x": 0.0066,
+        "dispersion_y": 0.0,
+        "dispersionp_x": 0.0065,
+        "dispersionp_y": 0.0
+    },
+    "magnetic_structure": {
+        "CLASS_NAME": "BendingMagnet",
+        "radius": 1.334256380792608,
+        "magnetic_field": 6.0,
+        "length": 0.22
+    }
+}

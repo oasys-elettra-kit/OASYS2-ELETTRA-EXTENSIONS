@@ -1,0 +1,5 @@
+Beamline,bm_name,Position,json_bm_file
+Material Science,B80,81.3 mm (0.85 deg) before the central line,b80_mat_science.json
+Syrmep,Superbend,"After the short ss, central line",sbend_syrmep.json
+BEAR,B80,76.5 mm (0.80 deg) before the central line,b80_dxrl.json
+DXRL,B80,76.5 mm (0.80 deg) before the central line,b80_dxrl.json
